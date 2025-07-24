@@ -87,41 +87,60 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- Dropzone ---
+    const initializeDropzone = async () => {
+        try {
+            const configResponse = await fetch('/api/public-config');
+            if (!configResponse.ok) throw new Error('Could not fetch public config');
+            const publicConfig = await configResponse.json();
+            const maxFilesize = publicConfig.max_filesize_mb || 1024;
 
-    const myDropzone = new Dropzone("#my-dropzone", {
-        url: "/api/upload",
-        autoProcessQueue: false,
-        paramName: "file",
-        maxFilesize: 1024,
-        parallelUploads: 20,
-        dictDefaultMessage: "Glissez-déposez des fichiers ici ou cliquez...",
-        addRemoveLinks: true,
-        dictCancelUpload: "Annuler",
-        dictRemoveFile: "Retirer",
-        init: function() {
-            const dropzoneInstance = this;
-            this.on("queuecomplete", function() {
-                fetchFiles();
-                dropzoneInstance.removeAllFiles();
+            const myDropzone = new Dropzone("#my-dropzone", {
+                url: "/api/upload",
+                autoProcessQueue: false,
+                paramName: "file",
+                maxFilesize: maxFilesize,
+                parallelUploads: 20,
+
+                // Options pour l'upload fractionné
+                chunking: true,
+                forceChunking: true,
+                chunkSize: 5 * 1024 * 1024, // 5 Mo
+                parallelChunkUploads: false, // Important pour les mauvaises connexions
+                retryChunks: true,
+                retryChunksLimit: 3,
+
+                dictDefaultMessage: "Glissez-déposez des fichiers ici ou cliquez...",
+                addRemoveLinks: true,
+                dictCancelUpload: "Annuler",
+                dictRemoveFile: "Retirer",
+
+                init: function() {
+                    const dropzoneInstance = this;
+                    this.on("queuecomplete", function() {
+                        fetchFiles();
+                        dropzoneInstance.removeAllFiles();
+                    });
+                    this.on("error", function(file, response) {
+                        const message = (typeof response === 'string') ? response : (response.error || "Erreur inconnue");
+                        alert(`Erreur d'upload pour ${file.name}: ${message}`);
+                        dropzoneInstance.removeFile(file);
+                    });
+                }
             });
-            this.on("error", function(file, response) {
-                const message = response.error || response;
-                alert(`Erreur d'upload pour ${file.name}: ${message}`);
-                dropzoneInstance.removeFile(file);
-            });
+            document.getElementById('upload-btn').addEventListener('click', () => myDropzone.processQueue());
+        } catch (error) {
+            console.error("Failed to initialize Dropzone:", error);
+            document.querySelector("#my-dropzone .dz-message").textContent = "Erreur de configuration du module d'upload.";
         }
-    });
+    };
 
     // --- Événements ---
-
-    document.getElementById('upload-btn').addEventListener('click', () => myDropzone.processQueue());
     refreshBtn.addEventListener('click', fetchFiles);
 
     fileTableBody.addEventListener('click', async (e) => {
         const target = e.target;
         const actionButton = target.closest('button');
 
-        // Clic sur un bouton d'action
         if (actionButton) {
             const fileId = actionButton.dataset.fileId;
             if (actionButton.classList.contains('btn-delete')) {
@@ -149,7 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Clic sur un checksum
         if (target.classList.contains('checksum-copy')) {
             const fullChecksum = target.dataset.fullChecksum;
             if (fullChecksum) {
@@ -206,4 +224,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Initialisation ---
     fetchFiles();
+    initializeDropzone();
 });

@@ -13,7 +13,11 @@
         Uploader des fichiers
     </div>
     <div class="card-body">
-        <form action="/api/upload" class="dropzone mb-3" id="my-dropzone"></form>
+        <form action="/api/upload" class="dropzone mb-3" id="my-dropzone">
+          <div class="dz-message" data-dz-message>
+            <span>Glissez-déposez des fichiers ici ou cliquez...</span>
+          </div>
+        </form>
         <button id="upload-btn" class="btn btn-primary w-100">Uploader le(s) fichier(s)</button>
     </div>
 </div>

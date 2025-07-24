@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('admin-password');
     const loginError = document.getElementById('login-error');
 
-    const configList = document.getElementById('config-list');
+    const configForm = document.getElementById('config-form');
+    const maxUploadInput = document.getElementById('max-upload-mb');
+
     const logsTableBody = document.getElementById('logs-table-body');
     const logsPagination = document.getElementById('logs-pagination');
 
@@ -59,16 +61,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/admin/config', { headers: getAuthHeader() });
             if (!response.ok) throw new Error('Erreur de chargement de la config.');
             const config = await response.json();
-            configList.innerHTML = `
-                <li class="list-group-item"><strong>Dossier d'upload :</strong> <code>${config.upload_folder}</code></li>
-                <li class="list-group-item"><strong>Stockage max :</strong> ${config.max_storage}</li>
-                <li class="list-group-item"><strong>Base de données :</strong> <code>${config.database_uri}</code></li>
-            `;
+            maxUploadInput.value = config.max_upload_mb;
         } catch (error) {
             console.error(error);
-            configList.innerHTML = `<li class="list-group-item text-danger">Impossible de charger la configuration.</li>`;
+            alert("Impossible de charger la configuration.");
         }
     };
+
+    configForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newMaxSize = maxUploadInput.value;
+        try {
+            const response = await fetch('/admin/config', {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({ max_upload_mb: newMaxSize })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Erreur inconnue");
+            alert("Configuration enregistrée avec succès !");
+            fetchConfig();
+        } catch (error) {
+            alert(`Erreur : ${error.message}`);
+        }
+    });
 
     const fetchLogs = async (page = 1) => {
         try {
@@ -115,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Gestion de la Purge des Fichiers ---
     const confirmPurgeFilesBtn = document.getElementById('confirm-purge-files-btn');
     const purgeFilesModalEl = document.getElementById('purge-files-modal');
-    if (purgeFilesModalEl) {
+    if (purgeFilesModalEl && confirmPurgeFilesBtn) {
         const purgeFilesModal = new bootstrap.Modal(purgeFilesModalEl);
         confirmPurgeFilesBtn.addEventListener('click', async () => {
             try {
@@ -134,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Gestion de la Purge des Logs ---
     const confirmPurgeLogsBtn = document.getElementById('confirm-purge-logs-btn');
     const purgeLogsModalEl = document.getElementById('purge-logs-modal');
-    if (purgeLogsModalEl) {
+    if (purgeLogsModalEl && confirmPurgeLogsBtn) {
         const purgeLogsModal = new bootstrap.Modal(purgeLogsModalEl);
         confirmPurgeLogsBtn.addEventListener('click', async () => {
             try {

@@ -50,11 +50,20 @@
 
     <div class="card mb-4">
         <div class="card-header">
-            <h4>Configuration Actuelle</h4>
+            <h4>Configuration</h4>
         </div>
         <div class="card-body">
-            <ul class="list-group" id="config-list">
-                </ul>
+            <form id="config-form">
+                <div class="row align-items-end">
+                    <div class="col-md-6">
+                        <label for="max-upload-mb" class="form-label">Taille maximale d'upload (Mo)</label>
+                        <input type="number" class="form-control" id="max-upload-mb" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-primary mt-3 mt-md-0">Enregistrer la configuration</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 

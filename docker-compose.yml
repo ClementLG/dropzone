@@ -1,25 +1,22 @@
-version: '3.8'
-
 services:
   web:
     build: .
-    command: gunicorn --bind 0.0.0.0:5000 run:app
+    command: gunicorn --bind 0.0.0.0:5000 --timeout 1800 run:app
     volumes:
-      - .:/app
-      - uploads_data:/app/uploads
+      - ./uploads:/app/uploads
+      - ./config.json:/app/config.json
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=development
+      - FLASK_ENV=production
     depends_on:
       - redis
 
   worker:
     build: .
-    command: celery -A run.celery worker --loglevel=info
+    command: ["celery", "-A", "run.celery", "worker", "--loglevel=info"]
     volumes:
-      - .:/app
-      - uploads_data:/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
       - redis
 
@@ -27,6 +24,3 @@ services:
     image: "redis:7-alpine"
     ports:
       - "6379:6379"
-
-volumes:
-  uploads_data:

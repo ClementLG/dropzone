@@ -2,8 +2,29 @@ from flask import Blueprint, jsonify, request, current_app
 from ..models import db, File, Log
 from ..utils import admin_required
 import os
+import json
 
 admin_bp = Blueprint('admin_bp', __name__)
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
+
+
+def load_persistent_config():
+    """Charge la configuration depuis config.json."""
+    if os.path.isfile(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {}
+    return {}
+
+
+def save_persistent_config(data):
+    """Sauvegarde la configuration dans config.json."""
+    current_config = load_persistent_config()
+    current_config.update(data)
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(current_config, f, indent=4)
 
 
 @admin_bp.route('/login', methods=['POST'])
@@ -13,6 +34,38 @@ def admin_login():
     if password == current_app.config['ADMIN_PASSWORD']:
         return jsonify({"message": "Authentification réussie"}), 200
     return jsonify({"error": "Mot de passe incorrect"}), 401
+
+
+@admin_bp.route('/config', methods=['GET', 'POST'])
+@admin_required
+def handle_config():
+    """Gère la configuration (lit et écrit dans config.json)."""
+    if request.method == 'POST':
+        data = request.get_json()
+
+        if 'max_upload_mb' in data:
+            try:
+                max_size = int(data['max_upload_mb'])
+                if max_size < 1:
+                    return jsonify({"error": "La taille doit être au moins de 1 Mo."}), 400
+                save_persistent_config({'MAX_UPLOAD_MB': max_size})
+
+                # Applique la configuration au serveur Flask en cours d'exécution
+                current_app.config['MAX_CONTENT_LENGTH'] = max_size * 1024 * 1024
+
+            except (ValueError, TypeError):
+                return jsonify({"error": "La valeur doit être un nombre entier."}), 400
+
+        log = Log(action="CONFIG_UPDATE", details=f"Configuration mise à jour : {data}")
+        db.session.add(log)
+        db.session.commit()
+        return jsonify({"message": "Configuration mise à jour."})
+
+    # GET : Retourne la configuration persistante ou celle par défaut
+    persistent_config = load_persistent_config()
+    return jsonify({
+        "max_upload_mb": persistent_config.get('MAX_UPLOAD_MB', current_app.config['MAX_UPLOAD_MB']),
+    })
 
 
 @admin_bp.route('/logs', methods=['GET'])
@@ -27,17 +80,6 @@ def get_logs():
         "logs": [log.to_dict() for log in logs],
         "total_pages": logs_pagination.pages,
         "current_page": page
-    })
-
-
-@admin_bp.route('/config', methods=['GET'])
-@admin_required
-def get_config():
-    """Retourne la configuration actuelle, protégé."""
-    return jsonify({
-        "upload_folder": current_app.config['UPLOAD_FOLDER'],
-        "max_storage": "Non implémenté",
-        "database_uri": current_app.config['SQLALCHEMY_DATABASE_URI']
     })
 
 
