@@ -8,9 +8,11 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'une-cle-secrete-difficile-a-deviner'
 
-    # La base de données est déplacée dans le dossier partagé 'uploads'
     UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(UPLOAD_FOLDER, 'app.db')
+
+    # La base de données est déplacée dans un volume Docker dédié
+    DB_FOLDER = os.path.join(basedir, 'database')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(DB_FOLDER, 'app.db')
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

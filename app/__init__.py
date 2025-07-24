@@ -14,11 +14,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Créer le dossier d'upload et le sous-dossier tmp s'ils n'existent pas
+    # Créer les dossiers nécessaires
     upload_folder = app.config['UPLOAD_FOLDER']
     temp_folder = os.path.join(upload_folder, 'tmp')
+    db_folder = app.config['DB_FOLDER']
+
     os.makedirs(upload_folder, exist_ok=True)
     os.makedirs(temp_folder, exist_ok=True)
+    os.makedirs(db_folder, exist_ok=True)
 
     # Initialiser les extensions avec l'app
     db.init_app(app)

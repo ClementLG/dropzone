@@ -5,6 +5,8 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./config.json:/app/config.json
+      # Ajoute le volume pour la base de données
+      - db_data:/app/database
     ports:
       - "5000:5000"
     environment:
@@ -17,6 +19,8 @@ services:
     command: ["celery", "-A", "run.celery", "worker", "--loglevel=info"]
     volumes:
       - ./uploads:/app/uploads
+      # Ajoute le volume pour la base de données
+      - db_data:/app/database
     depends_on:
       - redis
 
@@ -24,3 +28,7 @@ services:
     image: "redis:7-alpine"
     ports:
       - "6379:6379"
+
+# Définit le volume nommé
+volumes:
+  db_data:
