@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: gunicorn --bind 0.0.0.0:5000 run:app
+    volumes:
+      - .:/app
+      - uploads_data:/app/uploads
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    command: celery -A run.celery worker --loglevel=info
+    volumes:
+      - .:/app
+      - uploads_data:/app/uploads
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:7-alpine"
+    ports:
+      - "6379:6379"
+
+volumes:
+  uploads_data:

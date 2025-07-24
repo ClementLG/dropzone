@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+gunicorn
+celery
+redis
+python-dotenv
+werkzeug

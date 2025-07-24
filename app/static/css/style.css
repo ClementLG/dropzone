@@ -1,0 +1,32 @@
+/* Style pour tronquer le texte avec des points de suspension */
+.truncate-text {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+/* Rend le checksum cliquable */
+.checksum-copy {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-decoration-color: #6c757d;
+}
+
+.checksum-copy:hover {
+    color: #0dcaf0;
+}
+
+/* Amélioration du contraste en mode sombre */
+[data-bs-theme="dark"] .dropzone {
+    /* Fond légèrement plus clair que le fond principal pour se démarquer */
+    background-color: #2c3034;
+    /* Bordure plus visible */
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .dropzone .dz-message {
+    /* Texte du message beaucoup plus lisible */
+    color: #adb5bd;
+}

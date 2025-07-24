@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - DropZone{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>DropZone</h1>
+    <a href="/admin" class="btn btn-secondary">Panneau d'administration</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Uploader des fichiers
+    </div>
+    <div class="card-body">
+        <form action="/api/upload" class="dropzone mb-3" id="my-dropzone"></form>
+        <button id="upload-btn" class="btn btn-primary w-100">Uploader le(s) fichier(s)</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Fichiers stockés</span>
+        <button class="btn btn-sm btn-outline-secondary" id="refresh-btn" title="Rafraîchir la liste">
+            🔄 Rafraîchir
+        </button>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Nom du fichier</th>
+                    <th>Taille</th>
+                    <th>Checksum (SHA256)</th>
+                    <th>Date d'ajout</th>
+                    <th style="width: 20%;" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="file-table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="delete-confirm-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer le fichier <strong id="file-to-delete-name"></strong> ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rename-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Renommer le fichier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rename-form">
+                    <div class="mb-3">
+                        <label for="new-filename-input" class="form-label">Nouveau nom (sans extension) :</label>
+                        <input type="text" class="form-control" id="new-filename-input" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirm-rename-btn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

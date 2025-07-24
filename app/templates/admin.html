@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Administration - DropZone{% endblock %}
+
+{% block content %}
+<div id="login-section">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Accès Administration</h3>
+                </div>
+                <div class="card-body">
+                    <form id="admin-login-form">
+                        <div class="mb-3">
+                            <label for="admin-password" class="form-label">Mot de passe</label>
+                            <input type="password" class="form-control" id="admin-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+                    </form>
+                    <div id="login-error" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="admin-panel" class="d-none">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Panneau d'administration</h1>
+        <a href="/" class="btn btn-secondary">Retour à l'accueil</a>
+    </div>
+
+    <div class="card border-danger mb-4">
+        <div class="card-header bg-danger text-white">
+            <h4>Zone de Danger</h4>
+        </div>
+        <div class="card-body">
+            <p>Attention, les actions dans cette zone sont irréversibles.</p>
+            <div class="d-grid gap-2 d-md-flex">
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#purge-files-modal">
+                    Purger tous les fichiers
+                </button>
+                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#purge-logs-modal">
+                    Purger les logs
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Configuration Actuelle</h4>
+        </div>
+        <div class="card-body">
+            <ul class="list-group" id="config-list">
+                </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>Logs d'Activité</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Action</th>
+                        <th>Détails</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                    </tbody>
+            </table>
+            <nav>
+                <ul class="pagination justify-content-center" id="logs-pagination">
+                    </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="purge-files-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Confirmer la Purge Totale des Fichiers</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer <strong>TOUS</strong> les fichiers ?</p>
+                <p class="text-danger fw-bold">Cette action est définitive et irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirm-purge-files-btn">Oui, purger les fichiers</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="purge-logs-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-warning">Confirmer la Purge des Logs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer <strong>TOUS</strong> les logs d'activité ?</p>
+                <p class="text-warning fw-bold">Cette action est définitive et irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="confirm-purge-logs-btn">Oui, purger les logs</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}
