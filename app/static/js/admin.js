@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const configForm = document.getElementById('config-form');
     const maxUploadInput = document.getElementById('max-upload-mb');
     const chunkSizeInput = document.getElementById('chunk-size-mb');
+    const defaultExpirationInput = document.getElementById('default-expiration-minutes');
+    const maxExpirationInput = document.getElementById('max-expiration-minutes');
 
     const logsTableBody = document.getElementById('logs-table-body');
     const logsPagination = document.getElementById('logs-pagination');
@@ -44,13 +46,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const fetchConfig = async () => {
         try {
             const response = await fetch('/admin/config', { headers: getAuthHeader() });
+
+            if (response.status === 401 || response.status === 403) {
+                sessionStorage.removeItem('admin-token');
+                window.location.reload();
+                throw new Error('Session invalide, reconnexion requise.');
+            }
+
             if (!response.ok) throw new Error('Erreur de chargement de la configuration.');
+
             const config = await response.json();
             maxUploadInput.value = config.max_upload_mb;
             chunkSizeInput.value = config.chunk_size_mb;
+            defaultExpirationInput.value = config.default_expiration_minutes;
+            maxExpirationInput.value = config.max_expiration_minutes;
         } catch (error) {
             console.error(error);
-            alert("Impossible de charger la configuration.");
+            alert("Impossible de charger la configuration. Vérifiez la console pour les erreurs.");
         }
     };
 
@@ -112,16 +124,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     configForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const newMaxSize = maxUploadInput.value;
-        const newChunkSize = chunkSizeInput.value;
+        const configData = {
+            max_upload_mb: maxUploadInput.value,
+            chunk_size_mb: chunkSizeInput.value,
+            default_expiration_minutes: defaultExpirationInput.value,
+            max_expiration_minutes: maxExpirationInput.value
+        };
         try {
             const response = await fetch('/admin/config', {
                 method: 'POST',
                 headers: getAuthHeader(),
-                body: JSON.stringify({
-                    max_upload_mb: newMaxSize,
-                    chunk_size_mb: newChunkSize
-                })
+                body: JSON.stringify(configData)
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || "Erreur inconnue");

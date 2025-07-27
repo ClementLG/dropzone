@@ -42,27 +42,36 @@ def get_or_create_directory_path(full_path, parent_id):
     return current_parent_id
 
 
+# Helper function to be used in this blueprint
+def load_persistent_config():
+    """Charge la configuration depuis config.json."""
+    CONFIG_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
+    if os.path.isfile(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {}
+    return {}
+
+
 # --- Routes API ---
 
 @files_bp.route('/public-config', methods=['GET'])
 def get_public_config():
     """Retourne la configuration non-sensible pour le client."""
-    CONFIG_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
-    max_upload_mb = current_app.config['MAX_UPLOAD_MB']
-    chunk_size_mb = current_app.config['CHUNK_SIZE_MB']
-
-    if os.path.isfile(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            try:
-                persistent_config = json.load(f)
-                max_upload_mb = persistent_config.get('MAX_UPLOAD_MB', max_upload_mb)
-                chunk_size_mb = persistent_config.get('CHUNK_SIZE_MB', chunk_size_mb)
-            except json.JSONDecodeError:
-                pass
+    persistent_config = load_persistent_config()
+    max_upload_mb = persistent_config.get('MAX_UPLOAD_MB', current_app.config['MAX_UPLOAD_MB'])
+    chunk_size_mb = persistent_config.get('CHUNK_SIZE_MB', current_app.config['CHUNK_SIZE_MB'])
+    default_expiration = persistent_config.get('DEFAULT_EXPIRATION_MINUTES',
+                                               current_app.config['DEFAULT_EXPIRATION_MINUTES'])
+    max_expiration = persistent_config.get('MAX_EXPIRATION_MINUTES', current_app.config['MAX_EXPIRATION_MINUTES'])
 
     return jsonify({
         "max_filesize_mb": max_upload_mb,
-        "chunk_size_mb": chunk_size_mb
+        "chunk_size_mb": chunk_size_mb,
+        "default_expiration_minutes": default_expiration,
+        "max_expiration_minutes": max_expiration
     })
 
 
@@ -110,8 +119,18 @@ def upload_file():
     parent_id_str = request.form.get('parent_id')
     parent_id = int(parent_id_str) if parent_id_str and parent_id_str != 'null' else None
 
-    relative_path = request.form.get('webkitRelativePath')
+    expiration_minutes_str = request.form.get('expiration_minutes')
+    try:
+        expiration_minutes = int(expiration_minutes_str)
+    except (ValueError, TypeError):
+        expiration_minutes = current_app.config['DEFAULT_EXPIRATION_MINUTES']
 
+    persistent_config = load_persistent_config()
+    max_minutes = persistent_config.get('MAX_EXPIRATION_MINUTES', current_app.config['MAX_EXPIRATION_MINUTES'])
+    if expiration_minutes > max_minutes:
+        expiration_minutes = max_minutes
+
+    relative_path = request.form.get('webkitRelativePath')
     target_path = ''
     final_parent_id = parent_id
 
@@ -144,7 +163,8 @@ def upload_file():
         total_chunks=total_chunks,
         original_filename=file.filename,
         target_path=target_path,
-        parent_id=final_parent_id
+        parent_id=final_parent_id,
+        expiration_minutes=expiration_minutes
     )
 
     return jsonify({"message": "Upload terminé, assemblage en cours..."}), 202

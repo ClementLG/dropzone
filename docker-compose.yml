@@ -18,7 +18,21 @@ services:
     command: ["celery", "-A", "run.celery", "worker", "--loglevel=info", "--concurrency=4"]
     volumes:
       - ./uploads:/app/uploads
+      - ./config.json:/app/config.json
       - db_data:/app/database
+    environment:
+      - ROLE=background
+    depends_on:
+      - redis
+
+  beat:
+    build: .
+    command: ["celery", "-A", "run.celery", "beat", "--loglevel=info"]
+    volumes:
+      - ./config.json:/app/config.json
+      - db_data:/app/database
+    environment:
+      - ROLE=background
     depends_on:
       - redis
 

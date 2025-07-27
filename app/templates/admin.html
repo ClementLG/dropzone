@@ -3,6 +3,7 @@
 {% block title %}Administration - DropZone{% endblock %}
 
 {% block content %}
+<!-- Section de connexion -->
 <div id="login-section">
     <div class="row justify-content-center">
         <div class="col-md-6">
@@ -25,12 +26,14 @@
     </div>
 </div>
 
+<!-- Section principale (cachée par défaut) -->
 <div id="admin-panel" class="d-none">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Panneau d'administration</h1>
         <a href="/" class="btn btn-secondary">Retour à l'accueil</a>
     </div>
 
+    <!-- Zone de Danger -->
     <div class="card border-danger mb-4">
         <div class="card-header bg-danger text-white">
             <h4>Zone de Danger</h4>
@@ -48,6 +51,7 @@
         </div>
     </div>
 
+    <!-- Carte de Configuration -->
     <div class="card mb-4">
         <div class="card-header">
             <h4>Configuration</h4>
@@ -55,22 +59,31 @@
         <div class="card-body">
             <form id="config-form">
                 <div class="row gy-3 align-items-end">
-                    <div class="col-md-5">
-                        <label for="max-upload-mb" class="form-label">Taille maximale d'upload (Mo)</label>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="max-upload-mb" class="form-label">Taille max. upload (Mo)</label>
                         <input type="number" class="form-control" id="max-upload-mb" min="1">
                     </div>
-                    <div class="col-md-5">
-                        <label for="chunk-size-mb" class="form-label">Taille des morceaux d'upload (Mo)</label>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="chunk-size-mb" class="form-label">Taille des morceaux (Mo)</label>
                         <input type="number" class="form-control" id="chunk-size-mb" min="1">
                     </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="default-expiration-minutes" class="form-label">Expiration par défaut (minutes)</label>
+                        <input type="number" class="form-control" id="default-expiration-minutes" min="1">
                     </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="max-expiration-minutes" class="form-label">Expiration max. (minutes)</label>
+                        <input type="number" class="form-control" id="max-expiration-minutes" min="1">
+                    </div>
+                </div>
+                <div class="d-grid mt-3">
+                     <button type="submit" class="btn btn-primary">Enregistrer la configuration</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Carte des Logs -->
     <div class="card">
         <div class="card-header">
             <h4>Logs d'Activité</h4>
@@ -84,17 +97,16 @@
                         <th>Détails</th>
                     </tr>
                 </thead>
-                <tbody id="logs-table-body">
-                    </tbody>
+                <tbody id="logs-table-body"></tbody>
             </table>
             <nav>
-                <ul class="pagination justify-content-center" id="logs-pagination">
-                    </ul>
+                <ul class="pagination justify-content-center" id="logs-pagination"></ul>
             </nav>
         </div>
     </div>
 </div>
 
+<!-- Modale de confirmation pour la purge des fichiers -->
 <div class="modal fade" id="purge-files-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -114,6 +126,7 @@
     </div>
 </div>
 
+<!-- Modale de confirmation pour la purge des logs -->
 <div class="modal fade" id="purge-logs-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -133,5 +146,6 @@
     </div>
 </div>
 
+<!-- Scripts spécifiques à la page admin -->
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% endblock %}

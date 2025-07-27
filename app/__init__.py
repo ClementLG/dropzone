@@ -1,4 +1,5 @@
 import os
+import json
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from celery import Celery
@@ -9,6 +10,9 @@ db = SQLAlchemy()
 celery = Celery(__name__,
                 broker=Config.broker_url,
                 backend=Config.result_backend)
+
+# Applique la planification directement à l'instance Celery
+celery.conf.beat_schedule = Config.beat_schedule
 
 
 def create_app():
@@ -37,8 +41,9 @@ def create_app():
     app.register_blueprint(files_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/admin')
 
-    # Création des tables de la base de données si elles n'existent pas
-    with app.app_context():
-        db.create_all()
+    # Le service 'web' est le seul responsable de la création de la BDD
+    if os.environ.get('ROLE') != 'background':
+        with app.app_context():
+            db.create_all()
 
     return app

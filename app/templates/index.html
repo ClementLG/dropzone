@@ -18,7 +18,23 @@
             <span>Glissez-déposez des fichiers ou un dossier ici...</span>
           </div>
         </form>
-        <button id="upload-btn" class="btn btn-primary w-100">Uploader le(s) fichier(s)</button>
+        <div class="row g-3 align-items-end">
+            <div class="col-8 col-md-4">
+                <label for="expiration-value" class="form-label">Expiration :</label>
+                <input type="number" class="form-control" id="expiration-value" value="30" min="1">
+            </div>
+            <div class="col-4 col-md-2">
+                <label for="expiration-unit" class="form-label">&nbsp;</label>
+                <select class="form-select" id="expiration-unit">
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Heures</option>
+                    <option value="days" selected>Jours</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <button id="upload-btn" class="btn btn-primary w-100">Uploader le(s) fichier(s)</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -37,11 +53,12 @@
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Nom</th>
+                    <th style="width: 35%;">Nom</th>
                     <th>Taille</th>
-                    <th>Checksum (SHA256)</th>
+                    <th>Checksum</th>
                     <th>Date d'ajout</th>
-                    <th style="width: 20%;" class="text-end">Actions</th>
+                    <th>Date d'expiration</th>
+                    <th style="width: 15%;" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody id="item-table-body"></tbody>
@@ -49,7 +66,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="delete-confirm-modal">
+<div class="modal fade" id="delete-confirm-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -68,7 +85,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="rename-modal">
+<div class="modal fade" id="rename-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -87,7 +104,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="new-folder-modal">
+<div class="modal fade" id="new-folder-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">

@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify, request, current_app
-from ..models import db, Item, Log
-from ..utils import admin_required
 import os
 import json
 import shutil
+from flask import Blueprint, jsonify, request, current_app
+from ..models import db, Item, Log
+from ..utils import admin_required
 
 admin_bp = Blueprint('admin_bp', __name__)
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
@@ -45,27 +45,27 @@ def handle_config():
         data = request.get_json()
         current_config = load_persistent_config()
 
-        if 'max_upload_mb' in data:
-            try:
-                max_size = int(data['max_upload_mb'])
-                if max_size < 1:
-                    return jsonify({"error": "La taille doit être au moins de 1 Mo."}), 400
-                current_config['MAX_UPLOAD_MB'] = max_size
-                current_app.config['MAX_CONTENT_LENGTH'] = max_size * 1024 * 1024
-            except (ValueError, TypeError):
-                return jsonify({"error": "La valeur pour la taille max doit être un nombre entier."}), 400
+        config_keys = {
+            'max_upload_mb': 'MAX_UPLOAD_MB',
+            'chunk_size_mb': 'CHUNK_SIZE_MB',
+            'default_expiration_minutes': 'DEFAULT_EXPIRATION_MINUTES',
+            'max_expiration_minutes': 'MAX_EXPIRATION_MINUTES'
+        }
 
-        if 'chunk_size_mb' in data:
-            try:
-                chunk_size = int(data['chunk_size_mb'])
-                if chunk_size < 1:
-                    return jsonify({"error": "La taille des morceaux doit être d'au moins 1 Mo."}), 400
-                current_config['CHUNK_SIZE_MB'] = chunk_size
-            except (ValueError, TypeError):
-                return jsonify({"error": "La valeur pour la taille des morceaux doit être un nombre entier."}), 400
+        for key, config_name in config_keys.items():
+            if key in data:
+                try:
+                    value = int(data[key])
+                    if value < 1:
+                        return jsonify({"error": f"La valeur pour {key} doit être au moins de 1."}), 400
+                    current_config[config_name] = value
+                    if config_name == 'MAX_UPLOAD_MB':
+                        current_app.config['MAX_CONTENT_LENGTH'] = value * 1024 * 1024
+                except (ValueError, TypeError):
+                    return jsonify({"error": f"La valeur pour {key} doit être un nombre entier."}), 400
 
         save_persistent_config(current_config)
-        log = Log(action="CONFIG_UPDATE", details=f"Configuration mise à jour : {data}")
+        log = Log(action="CONFIG_UPDATE", details=f"Configuration mise à jour.")
         db.session.add(log)
         db.session.commit()
         return jsonify({"message": "Configuration mise à jour."})
@@ -75,6 +75,10 @@ def handle_config():
     return jsonify({
         "max_upload_mb": persistent_config.get('MAX_UPLOAD_MB', current_app.config['MAX_UPLOAD_MB']),
         "chunk_size_mb": persistent_config.get('CHUNK_SIZE_MB', current_app.config['CHUNK_SIZE_MB']),
+        "default_expiration_minutes": persistent_config.get('DEFAULT_EXPIRATION_MINUTES',
+                                                            current_app.config['DEFAULT_EXPIRATION_MINUTES']),
+        "max_expiration_minutes": persistent_config.get('MAX_EXPIRATION_MINUTES',
+                                                        current_app.config['MAX_EXPIRATION_MINUTES']),
     })
 
 

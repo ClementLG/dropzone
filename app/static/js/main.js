@@ -10,7 +10,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const breadcrumbsList = document.getElementById('breadcrumbs-list');
     const refreshBtn = document.getElementById('refresh-btn');
     const newFolderBtn = document.getElementById('new-folder-btn');
+    const expirationValueInput = document.getElementById('expiration-value');
+    const expirationUnitInput = document.getElementById('expiration-unit');
     let myDropzone;
+    let maxExpirationMinutes = 0;
 
     // --- MODALS ---
     const deleteModal = new bootstrap.Modal(document.getElementById('delete-confirm-modal'));
@@ -26,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         refreshBtn.disabled = true;
         refreshBtn.innerHTML = '🔄 Chargement...';
-        itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Chargement...</td></tr>`;
+        itemTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Chargement...</td></tr>`;
 
         try {
             const response = await fetch(url);
@@ -39,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderBreadcrumbs(data.breadcrumbs);
         } catch (error) {
             console.error('Fetch error:', error);
-            itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Impossible de charger les éléments.</td></tr>`;
+            itemTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Impossible de charger les éléments.</td></tr>`;
         } finally {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = '🔄 Rafraîchir';
@@ -49,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const renderItems = (items) => {
         itemTableBody.innerHTML = '';
         if (items.length === 0) {
-            itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Ce dossier est vide.</td></tr>`;
+            itemTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Ce dossier est vide.</td></tr>`;
             return;
         }
 
@@ -82,12 +85,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}" data-name="${item.name}" title="Supprimer">X</button>
             `;
 
+            const dateOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+            const createdAtHtml = new Date(item.created_at).toLocaleString('fr-FR', dateOptions);
+            const expiresAtHtml = item.expires_at
+                ? new Date(item.expires_at).toLocaleString('fr-FR', dateOptions)
+                : '';
+
             const row = `
                 <tr>
                     <td>${nameCellHtml}</td>
                     <td>${item.size_human || ''}</td>
                     <td>${checksumHtml}</td>
-                    <td>${new Date(item.created_at).toLocaleString('fr-FR')}</td>
+                    <td>${createdAtHtml}</td>
+                    <td>${expiresAtHtml}</td>
                     <td class="text-end">${actionsHtml}</td>
                 </tr>`;
             itemTableBody.insertAdjacentHTML('beforeend', row);
@@ -124,6 +134,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const configResponse = await fetch('/api/public-config');
             if (!configResponse.ok) throw new Error('Could not fetch public config');
             const publicConfig = await configResponse.json();
+
+            maxExpirationMinutes = publicConfig.max_expiration_minutes;
+            const defaultMinutes = publicConfig.default_expiration_minutes;
+
+            if (defaultMinutes >= 1440 && defaultMinutes % 1440 === 0) {
+                expirationValueInput.value = defaultMinutes / 1440;
+                expirationUnitInput.value = 'days';
+            } else if (defaultMinutes >= 60 && defaultMinutes % 60 === 0) {
+                expirationValueInput.value = defaultMinutes / 60;
+                expirationUnitInput.value = 'hours';
+            } else {
+                expirationValueInput.value = defaultMinutes;
+                expirationUnitInput.value = 'minutes';
+            }
+
             const maxFilesize = publicConfig.max_filesize_mb || 1024;
             const chunkSize = publicConfig.chunk_size_mb || 5;
 
@@ -145,7 +170,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 dictRemoveFile: "Retirer",
                 init: function() {
                     this.on('sending', (file, xhr, formData) => {
+                        const unit = expirationUnitInput.value;
+                        const value = parseInt(expirationValueInput.value, 10);
+                        let totalMinutes = 0;
+
+                        if (unit === 'minutes') totalMinutes = value;
+                        else if (unit === 'hours') totalMinutes = value * 60;
+                        else if (unit === 'days') totalMinutes = value * 60 * 24;
+
+                        if (totalMinutes > maxExpirationMinutes) {
+                            alert(`L'expiration ne peut pas dépasser ${maxExpirationMinutes} minutes.`);
+                            this.cancelUpload(file);
+                            return;
+                        }
+
                         formData.append('parent_id', currentFolderId);
+                        formData.append('expiration_minutes', totalMinutes);
                     });
                     this.on('queuecomplete', () => {
                         this.removeAllFiles(true);

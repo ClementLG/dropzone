@@ -22,6 +22,7 @@ class Item(db.Model):
     sha256 = db.Column(db.String(64), nullable=True)
     status = db.Column(db.String(20), default='processed', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
@@ -34,6 +35,7 @@ class Item(db.Model):
             "sha256": self.sha256,
             "status": self.status,
             "created_at": self.created_at.isoformat() + 'Z',
+            "expires_at": self.expires_at.isoformat() + 'Z' if self.expires_at else None
         }
 
 
