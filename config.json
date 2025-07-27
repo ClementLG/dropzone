@@ -1,3 +1,4 @@
 {
-    "MAX_UPLOAD_MB": 8192
+    "MAX_UPLOAD_MB": 8192,
+    "CHUNK_SIZE_MB": 20
 }

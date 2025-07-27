@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Accueil - DropZone{% endblock %}
+{% block title %}DropZone{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -15,46 +15,50 @@
     <div class="card-body">
         <form action="/api/upload" class="dropzone mb-3" id="my-dropzone">
           <div class="dz-message" data-dz-message>
-            <span>Glissez-déposez des fichiers ici ou cliquez...</span>
+            <span>Glissez-déposez des fichiers ou un dossier ici...</span>
           </div>
         </form>
         <button id="upload-btn" class="btn btn-primary w-100">Uploader le(s) fichier(s)</button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Fichiers stockés</span>
-        <button class="btn btn-sm btn-outline-secondary" id="refresh-btn" title="Rafraîchir la liste">
-            🔄 Rafraîchir
-        </button>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0" id="breadcrumbs-list"></ol>
+    </nav>
+    <div>
+        <button class="btn btn-sm btn-outline-secondary" id="refresh-btn" title="Rafraîchir">🔄</button>
+        <button class="btn btn-sm btn-outline-primary" id="new-folder-btn" title="Nouveau dossier">➕ Dossier</button>
     </div>
+</div>
+
+<div class="card">
     <div class="card-body">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Nom du fichier</th>
+                    <th style="width: 40%;">Nom</th>
                     <th>Taille</th>
                     <th>Checksum (SHA256)</th>
                     <th>Date d'ajout</th>
                     <th style="width: 20%;" class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody id="file-table-body">
-                </tbody>
+            <tbody id="item-table-body"></tbody>
         </table>
     </div>
 </div>
 
-<div class="modal fade" id="delete-confirm-modal" tabindex="-1">
+<div class="modal fade" id="delete-confirm-modal">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer le fichier <strong id="file-to-delete-name"></strong> ?</p>
+                <p>Êtes-vous sûr de vouloir supprimer <strong id="item-to-delete-name"></strong> ?</p>
+                <p class="text-danger">Cette action est irréversible.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -64,20 +68,16 @@
     </div>
 </div>
 
-<div class="modal fade" id="rename-modal" tabindex="-1">
+<div class="modal fade" id="rename-modal">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Renommer le fichier</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="rename-title">Renommer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="rename-form">
-                    <div class="mb-3">
-                        <label for="new-filename-input" class="form-label">Nouveau nom (sans extension) :</label>
-                        <input type="text" class="form-control" id="new-filename-input" required>
-                    </div>
-                </form>
+                <label for="new-item-name" class="form-label" id="rename-label">Nouveau nom :</label>
+                <input type="text" class="form-control" id="new-item-name">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -86,4 +86,41 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="new-folder-modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouveau dossier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="new-folder-name" class="form-label">Nom du dossier :</label>
+                <input type="text" class="form-control" id="new-folder-name">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirm-new-folder-btn">Créer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<template id="dz-preview-template" style="display: none;">
+  <div class="dz-preview dz-file-preview">
+    <div class="dz-image"><img data-dz-thumbnail /></div>
+    <div class="dz-details">
+      <div class="dz-size"><span data-dz-size></span></div>
+      <div class="dz-filename"><span data-dz-name></span></div>
+    </div>
+    <div class="dz-progress">
+      <span class="dz-upload" data-dz-uploadprogress></span>
+      <span class="dz-progress-text"></span>
+    </div>
+    <div class="dz-error-message"><span data-dz-errormessage></span></div>
+    <div class="dz-success-mark"><span>✔</span></div>
+    <div class="dz-error-mark"><span>✘</span></div>
+  </div>
+</template>
+
 {% endblock %}

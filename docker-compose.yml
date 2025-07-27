@@ -1,11 +1,10 @@
 services:
   web:
     build: .
-    command: gunicorn --bind 0.0.0.0:5000 --timeout 1800 run:app
+    command: gunicorn --bind 0.0.0.0:5000 --timeout 1800 --workers 4 run:app
     volumes:
       - ./uploads:/app/uploads
       - ./config.json:/app/config.json
-      # Ajoute le volume pour la base de données
       - db_data:/app/database
     ports:
       - "5000:5000"
@@ -16,10 +15,9 @@ services:
 
   worker:
     build: .
-    command: ["celery", "-A", "run.celery", "worker", "--loglevel=info"]
+    command: ["celery", "-A", "run.celery", "worker", "--loglevel=info", "--concurrency=4"]
     volumes:
       - ./uploads:/app/uploads
-      # Ajoute le volume pour la base de données
       - db_data:/app/database
     depends_on:
       - redis
@@ -29,6 +27,5 @@ services:
     ports:
       - "6379:6379"
 
-# Définit le volume nommé
 volumes:
   db_data:

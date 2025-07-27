@@ -54,13 +54,17 @@
         </div>
         <div class="card-body">
             <form id="config-form">
-                <div class="row align-items-end">
-                    <div class="col-md-6">
+                <div class="row gy-3 align-items-end">
+                    <div class="col-md-5">
                         <label for="max-upload-mb" class="form-label">Taille maximale d'upload (Mo)</label>
                         <input type="number" class="form-control" id="max-upload-mb" min="1">
                     </div>
-                    <div class="col-md-6">
-                        <button type="submit" class="btn btn-primary mt-3 mt-md-0">Enregistrer la configuration</button>
+                    <div class="col-md-5">
+                        <label for="chunk-size-mb" class="form-label">Taille des morceaux d'upload (Mo)</label>
+                        <input type="number" class="form-control" id="chunk-size-mb" min="1">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
                     </div>
                 </div>
             </form>
@@ -72,7 +76,7 @@
             <h4>Logs d'Activité</h4>
         </div>
         <div class="card-body">
-            <table class="table table-sm">
+            <table class="table table-sm table-striped">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -99,7 +103,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer <strong>TOUS</strong> les fichiers ?</p>
+                <p>Êtes-vous sûr de vouloir supprimer <strong>TOUS</strong> les fichiers et dossiers ?</p>
                 <p class="text-danger fw-bold">Cette action est définitive et irréversible.</p>
             </div>
             <div class="modal-footer">

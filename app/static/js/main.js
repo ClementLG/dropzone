@@ -2,159 +2,217 @@
 Dropzone.autoDiscover = false;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // --- STATE ---
+    let currentFolderId = null;
 
-    const fileTableBody = document.getElementById('file-table-body');
+    // --- ELEMENTS ---
+    const itemTableBody = document.getElementById('item-table-body');
+    const breadcrumbsList = document.getElementById('breadcrumbs-list');
     const refreshBtn = document.getElementById('refresh-btn');
+    const newFolderBtn = document.getElementById('new-folder-btn');
+    let myDropzone;
 
-    // Modales
-    const deleteModalEl = document.getElementById('delete-confirm-modal');
-    const renameModalEl = document.getElementById('rename-modal');
-    const deleteModal = new bootstrap.Modal(deleteModalEl);
-    const renameModal = new bootstrap.Modal(renameModalEl);
+    // --- MODALS ---
+    const deleteModal = new bootstrap.Modal(document.getElementById('delete-confirm-modal'));
+    let itemToDelete = {};
+    const renameModal = new bootstrap.Modal(document.getElementById('rename-modal'));
+    let itemToRename = {};
+    const newFolderModal = new bootstrap.Modal(document.getElementById('new-folder-modal'));
 
-    // Éléments des modales
-    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-    const fileToDeleteName = document.getElementById('file-to-delete-name');
-    let fileIdToDelete = null;
+    // --- FETCH & RENDER ---
+    const fetchAndRender = async (folderId = null) => {
+        currentFolderId = folderId;
+        const url = folderId ? `/api/items?parent_id=${folderId}` : '/api/items?parent_id=root';
 
-    const confirmRenameBtn = document.getElementById('confirm-rename-btn');
-    const newFilenameInput = document.getElementById('new-filename-input');
-    let fileIdToRename = null;
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '🔄 Chargement...';
+        itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Chargement...</td></tr>`;
 
-
-    // --- Fonctions ---
-
-    const fetchFiles = async () => {
-        if(refreshBtn) {
-            refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '🔄 Chargement...';
-        }
         try {
-            const response = await fetch('/api/files');
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Erreur réseau.');
-            const files = await response.json();
-            renderFiles(files);
+            const data = await response.json();
+
+            window.location.hash = folderId ? `/folder/${folderId}` : '';
+
+            renderItems(data.items);
+            renderBreadcrumbs(data.breadcrumbs);
         } catch (error) {
-            console.error(error);
-            fileTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Impossible de charger les fichiers.</td></tr>`;
+            console.error('Fetch error:', error);
+            itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Impossible de charger les éléments.</td></tr>`;
         } finally {
-            if(refreshBtn) {
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '🔄 Rafraîchir';
-            }
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '🔄 Rafraîchir';
         }
     };
 
-    const renderFiles = (files) => {
-        fileTableBody.innerHTML = '';
-        if (files.length === 0) {
-            fileTableBody.innerHTML = `<tr><td colspan="5" class="text-center">Aucun fichier trouvé.</td></tr>`;
+    const renderItems = (items) => {
+        itemTableBody.innerHTML = '';
+        if (items.length === 0) {
+            itemTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Ce dossier est vide.</td></tr>`;
             return;
         }
 
-        files.forEach(file => {
-            let checksumHTML = '';
-            if (file.status === 'pending') {
-                checksumHTML = `<span class="badge bg-secondary">En cours...</span>`;
-            } else if (file.status === 'error') {
-                checksumHTML = `<span class="badge bg-danger">Erreur</span>`;
-            } else if (file.sha256) {
-                checksumHTML = `<code class="small checksum-copy"
-                                      data-full-checksum="${file.sha256}"
-                                      title="Cliquer pour copier le checksum complet">
-                                      ${file.sha256.substring(0, 12)}...
-                                </code>`;
+        items.forEach(item => {
+            const icon = item.item_type === 'directory' ? '📁' : '📄';
+            const nameHtml = item.item_type === 'directory'
+                ? `<a href="#" class="text-decoration-none folder-link" data-id="${item.id}">${item.name}</a>`
+                : `<div class="truncate-text" title="${item.name}">${item.name}</div>`;
+
+            const nameCellHtml = `
+                <div class="d-flex align-items-center">
+                    <span class="me-2">${icon}</span>
+                    ${nameHtml}
+                </div>
+            `;
+
+            let checksumHtml = '';
+            if (item.item_type === 'file') {
+                if (item.status === 'pending') checksumHtml = `<span class="badge bg-secondary">En cours...</span>`;
+                else if (item.status === 'error') checksumHtml = `<span class="badge bg-danger">Erreur</span>`;
+                else if (item.sha256) checksumHtml = `<code class="small checksum-copy" data-full-checksum="${item.sha256}" title="Cliquer pour copier">${item.sha256.substring(0, 12)}...</code>`;
             }
 
-            const fileBaseName = file.filename.substring(0, file.filename.lastIndexOf('.')) || file.filename;
+            const fileBaseName = (item.item_type === 'file' && item.name.includes('.')) ? item.name.substring(0, item.name.lastIndexOf('.')) : item.name;
+
+            const actionsHtml = `
+                <button class="btn btn-sm btn-outline-info btn-copy-url" data-id="${item.id}" data-type="${item.item_type}" title="Copier l'URL">📋</button>
+                <button class="btn btn-sm btn-outline-warning btn-rename" data-id="${item.id}" data-name="${fileBaseName}" data-type="${item.item_type}" title="Renommer">✏️</button>
+                ${item.item_type === 'file' ? `<a href="/api/download/${item.id}" class="btn btn-sm btn-success" title="Télécharger">DL</a>` : ''}
+                <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}" data-name="${item.name}" title="Supprimer">X</button>
+            `;
 
             const row = `
                 <tr>
-                    <td><div class="truncate-text" title="${file.filename}">${file.filename}</div></td>
-                    <td>${file.size_human}</td>
-                    <td>${checksumHTML}</td>
-                    <td>${new Date(file.created_at).toLocaleString('fr-FR')}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-info btn-copy-url" data-file-id="${file.id}" title="Copier l'URL">📋</button>
-                        <button class="btn btn-sm btn-outline-warning btn-rename" data-file-id="${file.id}" data-filename="${fileBaseName}" title="Renommer">✏️</button>
-                        <a href="/api/download/${file.id}" class="btn btn-sm btn-success" title="Télécharger">DL</a>
-                        <button class="btn btn-sm btn-danger btn-delete" data-file-id="${file.id}" data-file-name="${file.filename}" title="Supprimer">X</button>
-                    </td>
-                </tr>
-            `;
-            fileTableBody.insertAdjacentHTML('beforeend', row);
+                    <td>${nameCellHtml}</td>
+                    <td>${item.size_human || ''}</td>
+                    <td>${checksumHtml}</td>
+                    <td>${new Date(item.created_at).toLocaleString('fr-FR')}</td>
+                    <td class="text-end">${actionsHtml}</td>
+                </tr>`;
+            itemTableBody.insertAdjacentHTML('beforeend', row);
         });
     };
 
-    // --- Dropzone ---
+    const renderBreadcrumbs = (breadcrumbs) => {
+        breadcrumbsList.innerHTML = `<li class="breadcrumb-item"><a href="#" class="folder-link" data-id="root">Racine</a></li>`;
+        breadcrumbs.forEach((crumb, index) => {
+            const isLast = index === breadcrumbs.length - 1;
+            breadcrumbsList.insertAdjacentHTML('beforeend',
+                `<li class="breadcrumb-item ${isLast ? 'active' : ''}" ${isLast ? 'aria-current="page"' : ''}>
+                    ${isLast ? crumb.name : `<a href="#" class="folder-link" data-id="${crumb.id}">${crumb.name}</a>`}
+                 </li>`
+            );
+        });
+    };
+
+    // --- ACTIONS ---
+    const handleApiAction = async (url, options, successCallback) => {
+        try {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Erreur inconnue du serveur.');
+            if(successCallback) successCallback(result);
+        } catch (error) {
+            alert(`Erreur: ${error.message}`);
+        }
+    };
+
+    // --- DROPZONE ---
     const initializeDropzone = async () => {
         try {
             const configResponse = await fetch('/api/public-config');
             if (!configResponse.ok) throw new Error('Could not fetch public config');
             const publicConfig = await configResponse.json();
             const maxFilesize = publicConfig.max_filesize_mb || 1024;
+            const chunkSize = publicConfig.chunk_size_mb || 5;
 
-            const myDropzone = new Dropzone("#my-dropzone", {
+            myDropzone = new Dropzone("#my-dropzone", {
                 url: "/api/upload",
+                previewTemplate: document.getElementById('dz-preview-template').innerHTML,
                 autoProcessQueue: false,
-                paramName: "file",
-                maxFilesize: maxFilesize,
-                parallelUploads: 20,
-
-                // Options pour l'upload fractionné
                 chunking: true,
                 forceChunking: true,
-                chunkSize: 5 * 1024 * 1024, // 5 Mo
-                parallelChunkUploads: false, // Important pour les mauvaises connexions
+                chunkSize: chunkSize * 1024 * 1024,
+                parallelChunkUploads: false,
                 retryChunks: true,
                 retryChunksLimit: 3,
-
-                dictDefaultMessage: "Glissez-déposez des fichiers ici ou cliquez...",
+                maxFilesize: maxFilesize,
+                parallelUploads: 20,
                 addRemoveLinks: true,
+                dictDefaultMessage: "Glissez-déposez des fichiers ou un dossier ici...",
                 dictCancelUpload: "Annuler",
                 dictRemoveFile: "Retirer",
-
                 init: function() {
-                    const dropzoneInstance = this;
-                    this.on("queuecomplete", function() {
-                        fetchFiles();
-                        dropzoneInstance.removeAllFiles();
+                    this.on('sending', (file, xhr, formData) => {
+                        formData.append('parent_id', currentFolderId);
                     });
-                    this.on("error", function(file, response) {
+                    this.on('queuecomplete', () => {
+                        this.removeAllFiles(true);
+                        setTimeout(() => {
+                            fetchAndRender(currentFolderId);
+                        }, 3000);
+                    });
+                    this.on("uploadprogress", function(file, progress) {
+                        const progressText = file.previewElement.querySelector(".dz-progress-text");
+                        if (progressText) {
+                            progressText.textContent = Math.round(progress) + "%";
+                        }
+                    });
+                    this.on("error", (file, response) => {
                         const message = (typeof response === 'string') ? response : (response.error || "Erreur inconnue");
                         alert(`Erreur d'upload pour ${file.name}: ${message}`);
-                        dropzoneInstance.removeFile(file);
+                        this.removeFile(file);
                     });
                 }
             });
             document.getElementById('upload-btn').addEventListener('click', () => myDropzone.processQueue());
-        } catch (error) {
+        } catch(error) {
             console.error("Failed to initialize Dropzone:", error);
             document.querySelector("#my-dropzone .dz-message").textContent = "Erreur de configuration du module d'upload.";
         }
     };
 
-    // --- Événements ---
-    refreshBtn.addEventListener('click', fetchFiles);
+    // --- EVENT LISTENERS ---
+    refreshBtn.addEventListener('click', () => fetchAndRender(currentFolderId));
 
-    fileTableBody.addEventListener('click', async (e) => {
+    document.body.addEventListener('click', async e => {
         const target = e.target;
-        const actionButton = target.closest('button');
 
+        const folderLink = target.closest('.folder-link');
+        if (folderLink) {
+            e.preventDefault();
+            const folderId = folderLink.dataset.id === 'root' ? null : folderLink.dataset.id;
+            fetchAndRender(folderId);
+        }
+
+        const actionButton = target.closest('button');
         if (actionButton) {
-            const fileId = actionButton.dataset.fileId;
-            if (actionButton.classList.contains('btn-delete')) {
-                fileIdToDelete = fileId;
-                fileToDeleteName.textContent = actionButton.dataset.fileName;
+            const itemId = actionButton.dataset.id;
+
+            if (actionButton.matches('#new-folder-btn')) {
+                document.getElementById('new-folder-name').value = '';
+                newFolderModal.show();
+            } else if (actionButton.matches('.btn-delete')) {
+                itemToDelete = { id: itemId, name: actionButton.dataset.name };
+                document.getElementById('item-to-delete-name').textContent = itemToDelete.name;
                 deleteModal.show();
-            } else if (actionButton.classList.contains('btn-rename')) {
-                fileIdToRename = fileId;
-                newFilenameInput.value = actionButton.dataset.filename;
+            } else if (actionButton.matches('.btn-rename')) {
+                itemToRename = { id: itemId, name: actionButton.dataset.name, type: actionButton.dataset.type };
+                document.getElementById('rename-title').textContent = `Renommer ${itemToRename.type === 'directory' ? 'le dossier' : 'le fichier'}`;
+                document.getElementById('new-item-name').value = itemToRename.name;
+                document.getElementById('rename-label').textContent = `Nouveau nom ${itemToRename.type === 'file' ? '(l\'extension sera conservée)' : ''} :`;
                 renameModal.show();
-            } else if (actionButton.classList.contains('btn-copy-url')) {
-                const url = `${window.location.origin}/api/download/${fileId}`;
+            } else if (actionButton.matches('.btn-copy-url')) {
+                const itemType = actionButton.dataset.type;
+                let urlToCopy;
+                if (itemType === 'directory') {
+                    urlToCopy = `${window.location.origin}${window.location.pathname}#/folder/${itemId}`;
+                } else {
+                    urlToCopy = `${window.location.origin}/api/download/${itemId}`;
+                }
                 try {
-                    await navigator.clipboard.writeText(url);
+                    await navigator.clipboard.writeText(urlToCopy);
                     const originalText = actionButton.innerHTML;
                     actionButton.disabled = true;
                     actionButton.innerHTML = 'Copié !';
@@ -171,58 +229,66 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target.classList.contains('checksum-copy')) {
             const fullChecksum = target.dataset.fullChecksum;
             if (fullChecksum) {
-                try {
-                    await navigator.clipboard.writeText(fullChecksum);
+                navigator.clipboard.writeText(fullChecksum).then(() => {
                     const originalText = target.innerHTML;
                     target.innerHTML = 'Copié !';
-                    target.style.color = '#198754'; // Vert
+                    target.style.color = '#198754';
                     setTimeout(() => {
                         target.innerHTML = originalText;
                         target.style.color = '';
                     }, 1500);
-                } catch (err) {
-                    console.error('Erreur de copie du checksum: ', err);
-                }
+                }).catch(err => console.error('Erreur de copie du checksum: ', err));
             }
         }
     });
 
-    confirmDeleteBtn.addEventListener('click', async () => {
-        if (!fileIdToDelete) return;
-        try {
-            const response = await fetch(`/api/files/${fileIdToDelete}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('La suppression a échoué.');
-            deleteModal.hide();
-            fetchFiles();
-        } catch(error) {
-            console.error(error);
-            alert('Une erreur est survenue.');
+    // --- MODAL CONFIRMATION LISTENERS ---
+    document.getElementById('confirm-new-folder-btn').addEventListener('click', () => {
+        const name = document.getElementById('new-folder-name').value.trim();
+        if (name) {
+            handleApiAction('/api/directories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, parent_id: currentFolderId })
+            }, () => {
+                newFolderModal.hide();
+                fetchAndRender(currentFolderId);
+            });
         }
     });
 
-    confirmRenameBtn.addEventListener('click', async () => {
-        if (!fileIdToRename) return;
-        const newName = newFilenameInput.value.trim();
-        if (!newName) {
-            alert("Le nom ne peut pas être vide.");
-            return;
-        }
-        try {
-            const response = await fetch(`/api/files/${fileIdToRename}/rename`, {
+    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+        handleApiAction(`/api/items/${itemToDelete.id}`, { method: 'DELETE' }, () => {
+            deleteModal.hide();
+            fetchAndRender(currentFolderId);
+        });
+    });
+
+    document.getElementById('confirm-rename-btn').addEventListener('click', () => {
+        const newName = document.getElementById('new-item-name').value.trim();
+        if (newName) {
+            handleApiAction(`/api/items/${itemToRename.id}/rename`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_name: newName })
+                body: JSON.stringify({ name: newName })
+            }, () => {
+                renameModal.hide();
+                fetchAndRender(currentFolderId);
             });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Erreur inconnue.");
-            renameModal.hide();
-            fetchFiles();
-        } catch (error) {
-            alert(`Erreur lors du renommage : ${error.message}`);
         }
     });
 
-    // --- Initialisation ---
-    fetchFiles();
+    // --- INITIALIZATION ---
+    const handleInitialLoad = () => {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#/folder/')) {
+            const folderId = hash.substring('#/folder/'.length);
+            fetchAndRender(folderId);
+        } else {
+            fetchAndRender(null);
+        }
+    };
+
     initializeDropzone();
+    handleInitialLoad();
 });

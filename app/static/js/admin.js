@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // --- ELEMENTS ---
     const loginSection = document.getElementById('login-section');
     const adminPanel = document.getElementById('admin-panel');
     const loginForm = document.getElementById('admin-login-form');
@@ -7,10 +8,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const configForm = document.getElementById('config-form');
     const maxUploadInput = document.getElementById('max-upload-mb');
+    const chunkSizeInput = document.getElementById('chunk-size-mb');
 
     const logsTableBody = document.getElementById('logs-table-body');
     const logsPagination = document.getElementById('logs-pagination');
 
+    // --- MODALS ---
+    const purgeFilesModal = new bootstrap.Modal(document.getElementById('purge-files-modal'));
+    const purgeLogsModal = new bootstrap.Modal(document.getElementById('purge-logs-modal'));
+
+    // --- API & State ---
     const checkAuth = () => {
         const token = sessionStorage.getItem('admin-token');
         if (token) {
@@ -33,58 +40,19 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     };
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const password = passwordInput.value;
-        try {
-            const response = await fetch('/admin/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
-            if (response.ok) {
-                sessionStorage.setItem('admin-token', password);
-                checkAuth();
-            } else {
-                const errorData = await response.json();
-                loginError.textContent = errorData.error || 'Erreur d\'authentification.';
-                loginError.classList.remove('d-none');
-            }
-        } catch (error) {
-            loginError.textContent = 'Erreur de connexion au serveur.';
-            loginError.classList.remove('d-none');
-        }
-    });
-
+    // --- FETCH & RENDER ---
     const fetchConfig = async () => {
         try {
             const response = await fetch('/admin/config', { headers: getAuthHeader() });
-            if (!response.ok) throw new Error('Erreur de chargement de la config.');
+            if (!response.ok) throw new Error('Erreur de chargement de la configuration.');
             const config = await response.json();
             maxUploadInput.value = config.max_upload_mb;
+            chunkSizeInput.value = config.chunk_size_mb;
         } catch (error) {
             console.error(error);
             alert("Impossible de charger la configuration.");
         }
     };
-
-    configForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newMaxSize = maxUploadInput.value;
-        try {
-            const response = await fetch('/admin/config', {
-                method: 'POST',
-                headers: getAuthHeader(),
-                body: JSON.stringify({ max_upload_mb: newMaxSize })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Erreur inconnue");
-            alert("Configuration enregistrée avec succès !");
-            fetchConfig();
-        } catch (error) {
-            alert(`Erreur : ${error.message}`);
-        }
-    });
 
     const fetchLogs = async (page = 1) => {
         try {
@@ -118,6 +86,52 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // --- EVENT LISTENERS ---
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const password = passwordInput.value;
+        try {
+            const response = await fetch('/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            if (response.ok) {
+                sessionStorage.setItem('admin-token', password);
+                checkAuth();
+            } else {
+                const errorData = await response.json();
+                loginError.textContent = errorData.error || 'Erreur d\'authentification.';
+                loginError.classList.remove('d-none');
+            }
+        } catch (error) {
+            loginError.textContent = 'Erreur de connexion au serveur.';
+            loginError.classList.remove('d-none');
+        }
+    });
+
+    configForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newMaxSize = maxUploadInput.value;
+        const newChunkSize = chunkSizeInput.value;
+        try {
+            const response = await fetch('/admin/config', {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify({
+                    max_upload_mb: newMaxSize,
+                    chunk_size_mb: newChunkSize
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Erreur inconnue");
+            alert("Configuration enregistrée avec succès !");
+            fetchConfig();
+        } catch (error) {
+            alert(`Erreur : ${error.message}`);
+        }
+    });
+
     logsPagination.addEventListener('click', (e) => {
         e.preventDefault();
         if (e.target.tagName === 'A') {
@@ -128,44 +142,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- Gestion de la Purge des Fichiers ---
-    const confirmPurgeFilesBtn = document.getElementById('confirm-purge-files-btn');
-    const purgeFilesModalEl = document.getElementById('purge-files-modal');
-    if (purgeFilesModalEl && confirmPurgeFilesBtn) {
-        const purgeFilesModal = new bootstrap.Modal(purgeFilesModalEl);
-        confirmPurgeFilesBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/admin/purge', { method: 'POST', headers: getAuthHeader() });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Erreur inconnue.');
-                alert(result.message);
-                purgeFilesModal.hide();
-                fetchLogs();
-            } catch (error) {
-                alert(`Erreur lors de la purge : ${error.message}`);
-            }
-        });
-    }
+    document.getElementById('confirm-purge-files-btn').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/admin/purge', { method: 'POST', headers: getAuthHeader() });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Erreur inconnue.');
+            alert(result.message);
+            purgeFilesModal.hide();
+            fetchLogs();
+        } catch (error) {
+            alert(`Erreur lors de la purge : ${error.message}`);
+        }
+    });
 
-    // --- Gestion de la Purge des Logs ---
-    const confirmPurgeLogsBtn = document.getElementById('confirm-purge-logs-btn');
-    const purgeLogsModalEl = document.getElementById('purge-logs-modal');
-    if (purgeLogsModalEl && confirmPurgeLogsBtn) {
-        const purgeLogsModal = new bootstrap.Modal(purgeLogsModalEl);
-        confirmPurgeLogsBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/admin/logs/purge', { method: 'POST', headers: getAuthHeader() });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Erreur inconnue.');
-                alert(result.message);
-                purgeLogsModal.hide();
-                fetchLogs();
-            } catch (error) {
-                alert(`Erreur lors de la purge des logs: ${error.message}`);
-            }
-        });
-    }
+    document.getElementById('confirm-purge-logs-btn').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/admin/logs/purge', { method: 'POST', headers: getAuthHeader() });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Erreur inconnue.');
+            alert(result.message);
+            purgeLogsModal.hide();
+            fetchLogs();
+        } catch (error) {
+            alert(`Erreur lors de la purge des logs: ${error.message}`);
+        }
+    });
 
-    // Vérifier l'authentification au chargement de la page
+    // --- INITIALIZATION ---
     checkAuth();
 });

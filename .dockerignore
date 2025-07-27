@@ -1,0 +1,14 @@
+# Dossiers à ignorer
+uploads/
+database/
+__pycache__/
+.venv/
+.git/
+
+# Fichiers de configuration et de BDD à gérer par les volumes
+config.json
+*.db
+*.db-journal
+
+# Fichiers d'environnement
+.env

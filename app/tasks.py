@@ -1,38 +1,93 @@
 import os
 import hashlib
+import shutil
 from . import celery, db, create_app
-from .models import File, Log
+from .models import Item, Log
+from werkzeug.utils import secure_filename
 
 
 @celery.task
-def process_file_checksum(file_id):
-    """Tâche de fond pour calculer le checksum SHA256 d'un fichier."""
-    app = create_app()  # Crée un contexte d'application pour la tâche
+def assemble_chunks(upload_uuid, total_chunks, original_filename, target_path, parent_id):
+    """Tâche de fond pour assembler les morceaux d'un fichier ET calculer son checksum en une seule passe."""
+    app = create_app()
     with app.app_context():
-        file_record = File.query.get(file_id)
-        if not file_record:
+        temp_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'tmp', upload_uuid)
+        final_filename = secure_filename(original_filename)
+        final_item_path = os.path.join(target_path, final_filename)
+        final_filepath_on_disk = os.path.join(app.config['UPLOAD_FOLDER'], final_item_path)
+
+        if Item.query.filter_by(path=final_item_path).first():
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
             return
 
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file_record.filename)
+        sha256_hash = hashlib.sha256()
+        try:
+            destination_dir = os.path.dirname(final_filepath_on_disk)
+            os.makedirs(destination_dir, exist_ok=True)
+
+            with open(final_filepath_on_disk, 'wb') as final_file:
+                for i in range(total_chunks):
+                    chunk_path = os.path.join(temp_dir, f"{i}.chunk")
+                    with open(chunk_path, 'rb') as chunk_file:
+                        chunk_content = chunk_file.read()
+                        # Met à jour le checksum avec le contenu du morceau
+                        sha256_hash.update(chunk_content)
+                        # Écrit le morceau dans le fichier final
+                        final_file.write(chunk_content)
+
+            shutil.rmtree(temp_dir)
+        except Exception as e:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            log_error = Log(action="ASSEMBLY_ERROR", details=f"Erreur pour {final_filename}: {e}")
+            db.session.add(log_error)
+            db.session.commit()
+            return
+
+        # Le checksum est maintenant finalisé
+        final_checksum = sha256_hash.hexdigest()
+        file_size = os.path.getsize(final_filepath_on_disk)
+
+        # Créer l'entrée en BDD avec le statut "processed" directement
+        new_item = Item(name=final_filename, item_type='file', path=final_item_path,
+                        parent_id=parent_id, size_bytes=file_size,
+                        status='processed', sha256=final_checksum)
+        db.session.add(new_item)
+        log = Log(action="UPLOAD_SUCCESS", details=f"Fichier '{final_filename}' assemblé et checksum calculé.")
+        db.session.add(log)
+        db.session.commit()
+
+
+@celery.task
+def process_file_checksum(item_id):
+    """
+    Cette tâche n'est plus utilisée dans le flux d'upload,
+    mais peut être conservée pour des recalculs manuels futurs.
+    """
+    app = create_app()
+    with app.app_context():
+        item_record = Item.query.get(item_id)
+        if not item_record or item_record.item_type != 'file':
+            return
+
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], item_record.path)
 
         try:
             sha256_hash = hashlib.sha256()
             with open(filepath, "rb") as f:
-                # Lire le fichier par morceaux pour ne pas surcharger la mémoire
                 for byte_block in iter(lambda: f.read(4096), b""):
                     sha256_hash.update(byte_block)
 
-            file_record.sha256 = sha256_hash.hexdigest()
-            file_record.status = 'processed'
+            item_record.sha256 = sha256_hash.hexdigest()
+            item_record.status = 'processed'
 
-            # Log l'action
-            log_entry = Log(action="CHECKSUM_CALCULATED", details=f"Checksum pour '{file_record.filename}' calculé.")
+            log_entry = Log(action="CHECKSUM_CALCULATED", details=f"Checksum pour '{item_record.path}' recalculé.")
             db.session.add(log_entry)
 
         except FileNotFoundError:
-            file_record.status = 'error'
-            log_entry = Log(action="CHECKSUM_ERROR",
-                            details=f"Fichier '{file_record.filename}' non trouvé pour le calcul du checksum.")
+            item_record.status = 'error'
+            log_entry = Log(action="CHECKSUM_ERROR", details=f"Fichier '{item_record.path}' non trouvé.")
             db.session.add(log_entry)
 
         finally:
