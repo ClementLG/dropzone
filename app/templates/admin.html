@@ -75,6 +75,11 @@
                         <label for="max-expiration-minutes" class="form-label">Expiration max. (minutes)</label>
                         <input type="number" class="form-control" id="max-expiration-minutes" min="1">
                     </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="cleanup-frequency-hours" class="form-label">Nettoyage dossiers vides (heures)</label>
+                        <input type="number" class="form-control" id="cleanup-frequency-hours" min="0">
+                        <small class="form-text text-muted">0 pour désactiver.</small>
+                    </div>
                 </div>
                 <div class="d-grid mt-3">
                      <button type="submit" class="btn btn-primary">Enregistrer la configuration</button>

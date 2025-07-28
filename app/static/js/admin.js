@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const chunkSizeInput = document.getElementById('chunk-size-mb');
     const defaultExpirationInput = document.getElementById('default-expiration-minutes');
     const maxExpirationInput = document.getElementById('max-expiration-minutes');
+    const cleanupFrequencyInput = document.getElementById('cleanup-frequency-hours');
 
     const logsTableBody = document.getElementById('logs-table-body');
     const logsPagination = document.getElementById('logs-pagination');
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chunkSizeInput.value = config.chunk_size_mb;
             defaultExpirationInput.value = config.default_expiration_minutes;
             maxExpirationInput.value = config.max_expiration_minutes;
+            cleanupFrequencyInput.value = config.cleanup_frequency_hours;
         } catch (error) {
             console.error(error);
             alert("Impossible de charger la configuration. Vérifiez la console pour les erreurs.");
@@ -128,7 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
             max_upload_mb: maxUploadInput.value,
             chunk_size_mb: chunkSizeInput.value,
             default_expiration_minutes: defaultExpirationInput.value,
-            max_expiration_minutes: maxExpirationInput.value
+            max_expiration_minutes: maxExpirationInput.value,
+            cleanup_frequency_hours: cleanupFrequencyInput.value
         };
         try {
             const response = await fetch('/admin/config', {

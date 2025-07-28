@@ -29,10 +29,17 @@ class Config:
     DEFAULT_EXPIRATION_MINUTES = int(os.environ.get('DEFAULT_EXPIRATION_MINUTES', 30 * 24 * 60))
     MAX_EXPIRATION_MINUTES = int(os.environ.get('MAX_EXPIRATION_MINUTES', 365 * 24 * 60))
 
-    # Planification de la tâche de suppression
+    # Configuration du nettoyage des dossiers vides
+    CLEANUP_EMPTY_FOLDERS_HOURS = int(os.environ.get('CLEANUP_EMPTY_FOLDERS_HOURS', 24))
+
+    # Planification des tâches Celery
     beat_schedule = {
         'delete-expired-files-every-minute': {
             'task': 'app.tasks.delete_expired_files',
             'schedule': crontab(),  # S'exécute chaque minute
+        },
+        'cleanup-empty-folders-scheduler': {
+            'task': 'app.tasks.cleanup_empty_directories',
+            'schedule': crontab(minute=0),  # S'exécute au début de chaque heure
         },
     }

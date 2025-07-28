@@ -49,7 +49,8 @@ def handle_config():
             'max_upload_mb': 'MAX_UPLOAD_MB',
             'chunk_size_mb': 'CHUNK_SIZE_MB',
             'default_expiration_minutes': 'DEFAULT_EXPIRATION_MINUTES',
-            'max_expiration_minutes': 'MAX_EXPIRATION_MINUTES'
+            'max_expiration_minutes': 'MAX_EXPIRATION_MINUTES',
+            'cleanup_frequency_hours': 'CLEANUP_EMPTY_FOLDERS_HOURS'
         }
 
         for key, config_name in config_keys.items():
@@ -79,6 +80,8 @@ def handle_config():
                                                             current_app.config['DEFAULT_EXPIRATION_MINUTES']),
         "max_expiration_minutes": persistent_config.get('MAX_EXPIRATION_MINUTES',
                                                         current_app.config['MAX_EXPIRATION_MINUTES']),
+        "cleanup_frequency_hours": persistent_config.get('CLEANUP_EMPTY_FOLDERS_HOURS',
+                                                         current_app.config['CLEANUP_EMPTY_FOLDERS_HOURS'])
     })
 
 
