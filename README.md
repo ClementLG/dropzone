@@ -49,8 +49,8 @@ Une application web simple et efficace pour gérer des fichiers et des dossiers 
 
 1.  **Clonez le projet :**
     ```bash
-    git clone [URL_DU_PROJET]
-    cd [NOM_DU_DOSSIER]
+    git clone https://github.com/ClementLG/dropzone.git
+    cd dropzone
     ```
 
 2.  **Configurez l'environnement :**
