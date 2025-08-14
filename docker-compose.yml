@@ -8,6 +8,8 @@ services:
       - db_data:/app/database
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - FLASK_ENV=production
     depends_on:
@@ -20,6 +22,8 @@ services:
       - ./uploads:/app/uploads
       - ./config.json:/app/config.json
       - db_data:/app/database
+    env_file:
+      - .env
     environment:
       - ROLE=background
     depends_on:
@@ -31,6 +35,8 @@ services:
     volumes:
       - ./config.json:/app/config.json
       - db_data:/app/database
+    env_file:
+      - .env
     environment:
       - ROLE=background
     depends_on:
