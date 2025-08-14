@@ -79,9 +79,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const fileBaseName = (item.item_type === 'file' && item.name.includes('.')) ? item.name.substring(0, item.name.lastIndexOf('.')) : item.name;
 
             const actionsHtml = `
-                <button class="btn btn-sm btn-outline-info btn-copy-url" data-id="${item.id}" data-type="${item.item_type}" title="Copier l'URL">📋</button>
+                <button class="btn btn-sm btn-outline-info btn-copy-url" data-id="${item.id}" data-type="${item.item_type}" data-download-url="${item.download_url || ''}" title="Copier l'URL">📋</button>
                 <button class="btn btn-sm btn-outline-warning btn-rename" data-id="${item.id}" data-name="${fileBaseName}" data-type="${item.item_type}" title="Renommer">✏️</button>
-                ${item.item_type === 'file' ? `<a href="/api/download/${item.id}" class="btn btn-sm btn-success" title="Télécharger">DL</a>` : ''}
+                ${item.item_type === 'file' ? `<a href="/api${item.download_url}" class="btn btn-sm btn-success" title="Télécharger">DL</a>` : ''}
                 <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}" data-name="${item.name}" title="Supprimer">X</button>
             `;
 
@@ -249,7 +249,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (itemType === 'directory') {
                     urlToCopy = `${window.location.origin}${window.location.pathname}#/folder/${itemId}`;
                 } else {
-                    urlToCopy = `${window.location.origin}/api/download/${itemId}`;
+                    const downloadUrl = actionButton.dataset.downloadUrl;
+                    urlToCopy = `${window.location.origin}/api${downloadUrl}`;
                 }
                 try {
                     await navigator.clipboard.writeText(urlToCopy);

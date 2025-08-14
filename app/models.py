@@ -25,7 +25,7 @@ class Item(db.Model):
     expires_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
-        return {
+        data = {
             "id": self.id,
             "name": self.name,
             "item_type": self.item_type,
@@ -35,8 +35,12 @@ class Item(db.Model):
             "sha256": self.sha256,
             "status": self.status,
             "created_at": self.created_at.isoformat() + 'Z',
-            "expires_at": self.expires_at.isoformat() + 'Z' if self.expires_at else None
+            "expires_at": self.expires_at.isoformat() + 'Z' if self.expires_at else None,
+            "download_url": None
         }
+        if self.item_type == 'file':
+            data['download_url'] = f"/download/{self.id}/{self.name}"
+        return data
 
 
 class Log(db.Model):

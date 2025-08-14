@@ -270,10 +270,13 @@ def rename_item(item_id):
         return jsonify({"error": str(e)}), 500
 
 
-@files_bp.route('/download/<int:item_id>', methods=['GET'])
-def download_file(item_id):
+@files_bp.route('/download/<int:item_id>/<filename>', methods=['GET'])
+def download_file(item_id, filename):
     """Sert un fichier au téléchargement."""
     item = Item.query.get_or_404(item_id)
+    if item.name != filename:
+        # Optionnel: rediriger vers la bonne URL ou renvoyer une erreur
+        return jsonify({"error": "Nom de fichier incorrect."}), 404
     if item.item_type != 'file':
         return jsonify({"error": "Ne peut télécharger que des fichiers."}), 400
 
